@@ -50,6 +50,19 @@
 - [[#tldr][TLDR]]
 - [[#transparency][TRANSPARENCY]]
 - [[#which-key][WHICH-KEY]]
+- [[#java][JAVA]]
+  - [[#helm][HELM]]
+  - [[#helm-descbinds][HELM DESCBINDS]]
+  - [[#helm-swoop][HELM SWOOP]]
+  - [[#avy-goto][AVY GOTO]]
+  - [[#run-code][RUN CODE]]
+  - [[#yasnippet][YASNIPPET]]
+  - [[#dap-mode][DAP-MODE]]
+  - [[#treemacs][TREEMACS]]
+  - [[#lsp-ui][LSP UI]]
+  - [[#helm-lsp][Helm LSP]]
+  - [[#install-lsp-package][INSTALL LSP PACKAGE]]
+  - [[#lsp-java][LSP JAVA]]
 
 * IMPORTANT PROGRAMS TO LOAD FIRST
 To keep this =config.org= a reasonable length, I have moved a lot of code to individual scripts that will be sourced by this config.  These scripts are found in "~/.emacs.d/scripts" and do not contain any code that most people are likely to need to edit.
@@ -64,6 +77,7 @@ To keep this =config.org= a reasonable length, I have moved a lot of code to ind
 (require 'elpaca-setup)  ;; The Elpaca Package Manager
 (require 'buffer-move)   ;; Buffer-move for better window management
 (require 'app-launchers) ;; Use emacs as a run launcher like dmenu (experimental)
+;(require 'treemacs)
 #+end_src
 
 * ALL THE ICONS
@@ -739,7 +753,9 @@ Org-tempo is not a separate package but a module within org that can be enabled.
 #+begin_src emacs-lisp
 (use-package projectile
   :config
-  (projectile-mode 1))
+  (projectile-mode 1)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+)
 #+end_src
 
 * RAINBOW DELIMITERS
@@ -923,4 +939,184 @@ With Emacs version 29, true transparency has been added.  I have turned transpar
 	  which-key-max-description-length 25
 	  which-key-allow-imprecise-window-fit nil
 	  which-key-separator " → " ))
+#+end_src
+
+* JAVA
+
+#+begin_src emacs-lisp
+(use-package use-package-chords
+:ensure t
+:init 
+:config (key-chord-mode 1)
+(setq key-chord-two-keys-delay 0.4)
+(setq key-chord-one-key-delay 0.5) ; default 0.2
+)
+#+end_src
+
+** HELM
+#+begin_src emacs-lisp
+(use-package helm
+:ensure t
+:init 
+(helm-mode 1)
+(progn (setq helm-buffers-fuzzy-matching t))
+:bind
+(("C-c h" . helm-command-prefix))
+(("M-x" . helm-M-x))
+(("C-x C-f" . helm-find-files))
+(("C-x b" . helm-buffers-list))
+(("C-c b" . helm-bookmarks))
+(("C-c f" . helm-recentf))   ;; Add new key to recentf
+(("C-c g" . helm-grep-do-git-grep)))  ;; Search using grep in a git project
+#+end_src
+
+** HELM DESCBINDS
+#+begin_src emacs-lisp
+(use-package helm-descbinds
+:ensure t
+:bind ("C-h b" . helm-descbinds))
+#+end_src
+
+** HELM SWOOP
+#+begin_src emacs-lisp
+(use-package helm-swoop 
+:ensure t
+;:chords
+;("js" . helm-swoop)
+;("jp" . helm-swoop-back-to-last-point)
+:init
+(bind-key "M-m" 'helm-swoop-from-isearch isearch-mode-map)
+
+;; If you prefer fuzzy matching
+(setq helm-swoop-use-fuzzy-match t)
+
+;; Save buffer when helm-multi-swoop-edit complete
+(setq helm-multi-swoop-edit-save t)
+
+;; If this value is t, split window inside the current window
+(setq helm-swoop-split-with-multiple-windows nil)
+
+;; Split direction. 'split-window-vertically or 'split-window-horizontally
+(setq helm-swoop-split-direction 'split-window-vertically)
+
+;; If nil, you can slightly boost invoke speed in exchange for text color
+(setq helm-swoop-speed-or-color nil)
+
+;; ;; Go to the opposite side of line from the end or beginning of line
+(setq helm-swoop-move-to-line-cycle t)
+)
+#+end_src
+
+** AVY GOTO
+#+begin_src emacs-lisp
+(use-package avy 
+:ensure t
+;:chords
+;("jc" . avy-goto-char)
+;("jw" . avy-goto-word-1)
+;("jl" . avy-goto-line))
+)
+#+end_src
+
+** RUN CODE
+#+begin_src emacs-lisp
+(use-package quickrun 
+:ensure t
+:bind ("C-c r" . quickrun))
+#+end_src
+
+** YASNIPPET
+#+begin_src emacs-lisp
+(use-package yasnippet :config (yas-global-mode))
+(use-package yasnippet-snippets :ensure t)
+#+end_src
+
+** DAP-MODE
+#
+(use-package dap-mode
+  :ensure t
+  :after (lsp-mode)
+  :functions dap-hydra/nil
+  :config
+  (require 'dap-java)
+  :bind (:map lsp-mode-map
+         ("<f5>" . dap-debug)
+         ("M-<f5>" . dap-hydra))
+  :hook ((dap-mode . dap-ui-mode)
+    (dap-session-created . (lambda (&_rest) (dap-hydra)))
+    (dap-terminated . (lambda (&_rest) (dap-hydra/nil)))))
+
+(use-package dap-java :ensure nil)
+#
+
+** TREEMACS
+#+begin_src emacs-lisp
+(use-package lsp-treemacs
+  :after (lsp-mode treemacs)
+  :ensure t
+  :commands lsp-treemacs-errors-list
+  :bind (:map lsp-mode-map
+         ("M-9" . lsp-treemacs-errors-list)))
+
+(use-package treemacs
+  :ensure t
+  :commands (treemacs)
+  :after (lsp-mode))
+#+end_src
+
+** LSP UI
+#+begin_src emacs-lisp
+(use-package lsp-ui
+:ensure t
+:after (lsp-mode)
+:bind (:map lsp-ui-mode-map
+         ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+         ([remap xref-find-references] . lsp-ui-peek-find-references))
+:init (setq lsp-ui-doc-delay 1.5
+      lsp-ui-doc-position 'bottom
+	  lsp-ui-doc-max-width 100
+))
+#+end_src
+
+** Helm LSP
+#+begin_src emacs-lisp
+(use-package helm-lsp
+:ensure t
+:after (lsp-mode)
+:commands (helm-lsp-workspace-symbol)
+:init (define-key lsp-mode-map [remap xref-find-apropos] #'helm-lsp-workspace-symbol))
+#+end_src
+
+** INSTALL LSP PACKAGE
+#+begin_src emacs-lisp
+(use-package lsp-mode
+:ensure t
+:hook (
+   (lsp-mode . lsp-enable-which-key-integration)
+   (java-mode . #'lsp-deferred)
+)
+:init (setq 
+    lsp-keymap-prefix "C-c l"              ; this is for which-key integration documentation, need to use lsp-mode-map
+    lsp-enable-file-watchers nil
+    read-process-output-max (* 1024 1024)  ; 1 mb
+    lsp-completion-provider :capf
+    lsp-idle-delay 0.500
+)
+:config 
+    (setq lsp-intelephense-multi-root nil) ; don't scan unnecessary projects
+    (with-eval-after-load 'lsp-intelephense
+    (setf (lsp--client-multi-root (gethash 'iph lsp-clients)) nil))
+	(define-key lsp-mode-map (kbd "C-c l") lsp-command-map)
+)
+#+end_src
+
+** LSP JAVA
+#+begin_src emacs-lisp
+(use-package lsp-java 
+:ensure t
+:config
+(require 'lsp-java-boot)
+(add-hook 'lsp-mode-hook #'lsp-lens-mode)
+(add-hook 'java-mode-hook #'lsp-java-boot-lens-mode))
+
 #+end_src
