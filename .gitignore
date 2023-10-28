@@ -8,3 +8,9 @@ projectile*
 recentf
 sessions
 .dap-breakpoints
+tramp
+.cache/lsp/eclipse.jdt.ls
+eclipse.jdt.ls/test-runner
+elpa
+workspace
+.lsp-session-v1
