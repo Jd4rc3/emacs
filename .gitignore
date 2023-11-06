@@ -14,3 +14,6 @@ eclipse.jdt.ls/test-runner
 elpa
 workspace
 .lsp-session-v1
+.cache
+eshell/history
+eshell/lastdir

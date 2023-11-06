@@ -64,6 +64,7 @@
   - [[#install-lsp-package][INSTALL LSP PACKAGE]]
   - [[#lsp-java][LSP JAVA]]
 - [[#config-ansi-colors][CONFIG ANSI COLORS]]
+- [[#eglot-lsp-using-it-for-cc][Eglot (lsp using it for c/c++)]]
 
 * IMPORTANT PROGRAMS TO LOAD FIRST
 To keep this =config.org= a reasonable length, I have moved a lot of code to individual scripts that will be sourced by this config.  These scripts are found in "~/.emacs.d/scripts" and do not contain any code that most people are likely to need to edit.
@@ -272,15 +273,15 @@ Defining the various fonts that Emacs will use.
 ** Setting the Font Face
 #+begin_src emacs-lisp
 (set-face-attribute 'default nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 110
   :weight 'medium)
 (set-face-attribute 'variable-pitch nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 120
   :weight 'medium)
 (set-face-attribute 'fixed-pitch nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 110
   :weight 'medium)
 ;; Makes commented text and keywords italics.
@@ -823,53 +824,75 @@ Eshell is an Emacs 'shell' that is written in Elisp.
   ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
   ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
   ;; eshell-aliases-file -- sets an aliases file for the eshell.
+  ;; PROMPT
+  (defun with-face (str &rest face-plist)
+      (propertize str 'face face-plist))
+    
+    (defun shk-eshell-prompt ()
+      (let ((header-bg "#11111b"))
+        (concat
+         (with-face (concat (eshell/pwd) " ") :background header-bg)
+         (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#cdd6f4")
+         (with-face
+          (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
+          :background header-bg)
+         (with-face "\n" :background header-bg)
+         (with-face user-login-name :foreground "#74c7ec")
+         "@"
+         (with-face "localhost" :foreground "#b4befe")
+         (if (= (user-uid) 0)
+             (with-face " #" :foreground "#f38ba8")
+           " $")
+         " ")))
+    (setq eshell-prompt-function 'shk-eshell-prompt)
+    (setq eshell-highlight-prompt nil)
+  ;;
 
-  (setq eshell-rc-script (concat user-emacs-directory "eshell/profile")
-        eshell-aliases-file (concat user-emacs-directory "eshell/aliases")
+  (setq eshell-rc-script "~/.emacs.d/eshell/profile.el"
         eshell-history-size 5000
         eshell-buffer-maximum-lines 5000
         eshell-hist-ignoredups t
         eshell-scroll-to-bottom-on-input t
         eshell-destroy-buffer-when-process-dies t
-        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
+        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh" "pwsh"))
 #+end_src
 
 ** Vterm
 Vterm is a terminal emulator within Emacs.  The 'shell-file-name' setting sets the shell to be used in M-x shell, M-x term, M-x ansi-term and M-x vterm.  By default, the shell is set to 'fish' but could change it to 'bash' or 'zsh' if you prefer.
 
-#+begin_src emacs-lisp
-(use-package vterm
-:config
-(setq shell-file-name "/bin/sh"
-      vterm-max-scrollback 5000))
-#+end_src
+;#+begin_src emacs-lisp
+;(use-package vterm
+;:config
+;(setq shell-file-name "/bin/sh"
+;      vterm-max-scrollback 5000))
+;#+end_src
 
 ** Vterm-Toggle
 [[https://github.com/jixiuf/vterm-toggle][vterm-toggle]] toggles between the vterm buffer and whatever buffer you are editing.
 
-#+begin_src emacs-lisp
-(use-package vterm-toggle
-  :after vterm
-  :config
-  ;; When running programs in Vterm and in 'normal' mode, make sure that ESC
-  ;; kills the program as it would in most standard terminal programs.
-  (evil-define-key 'normal vterm-mode-map (kbd "<escape>") 'vterm--self-insert)
-  (setq vterm-toggle-fullscreen-p nil)
-  (setq vterm-toggle-scope 'project)
-  (add-to-list 'display-buffer-alist
-               '((lambda (buffer-or-name _)
-                     (let ((buffer (get-buffer buffer-or-name)))
-                       (with-current-buffer buffer
-                         (or (equal major-mode 'vterm-mode)
-                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-                  (display-buffer-reuse-window display-buffer-at-bottom)
-                  ;;(display-buffer-reuse-window display-buffer-in-direction)
-                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
-                  ;;(direction . bottom)
-                  ;;(dedicated . t) ;dedicated is supported in emacs27
-                  (reusable-frames . visible)
-                  (window-height . 0.4))))
-#+end_src
+;#+begin_src emacs-lisp
+;(use-package vterm-toggle
+;  :after vterm
+;  :config
+;  ;; When running programs in Vterm and in 'normal' mode, make sure that ESC
+;  ;; kills the program as it would in most standard terminal programs.
+;  (evil-define-key 'normal vterm-mode-map (kbd "<escape>") 'vterm--self-insert)
+;  (setq vterm-toggle-fullscreen-p nil)
+;  (setq vterm-toggle-scope 'project)
+;  (add-to-list 'display-buffer-alist
+;               '((lambda (buffer-or-name _)
+;                     (let ((buffer (get-buffer buffer-or-name)))
+;                       (with-current-buffer buffer
+;                         (or (equal major-mode 'vterm-mode)
+;                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+;                  (display-buffer-reuse-window display-buffer-at-bottom)
+;                  ;;(display-buffer-reuse-window display-buffer-in-direction)
+;                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
+;                  ;;(direction . bottom)
+;                  ;;(dedicated . t) ;dedicated is supported in emacs27
+;                  (reusable-frames . visible)
+;                  (window-height . 0.4))))
+;#+end_src
 
 * SUDO EDIT
 [[https://github.com/nflath/sudo-edit][sudo-edit]] gives us the ability to open files with sudo privileges or switch over to editing with sudo privileges if we initially opened the file without such privileges.
@@ -1032,13 +1055,18 @@ With Emacs version 29, true transparency has been added.  I have turned transpar
 #+end_src
 
 ** DAP-MODE
-#
+#+begin_src emacs-lisp
 (use-package dap-mode
   :ensure t
   :after (lsp-mode)
   :functions dap-hydra/nil
   :config
   (require 'dap-java)
+  (require 'dap-lldb)
+  (setq dap-print-io t)
+  (setq dap-lldb-debug-program '("C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe"))
+  (add-hook 'c-mode-hook #'dap-mode)
+  (add-hook 'c++-mode-hook #'dap-mode)
   :bind (:map lsp-mode-map
          ("<f5>" . dap-debug)
          ("M-<f5>" . dap-hydra))
@@ -1046,8 +1074,7 @@ With Emacs version 29, true transparency has been added.  I have turned transpar
     (dap-session-created . (lambda (&_rest) (dap-hydra)))
     (dap-terminated . (lambda (&_rest) (dap-hydra/nil)))))
 
-(use-package dap-java :ensure nil)
-#
+#+end_src
 
 ** TREEMACS
 #+begin_src emacs-lisp
@@ -1136,3 +1163,12 @@ With Emacs version 29, true transparency has been added.  I have turned transpar
 
 (add-hook 'compilation-filter-hook 'my-colorize-compilation-buffer)
 #+end_src
+
+* Eglot (lsp using it for c/c++)
+#+begin_src emacs-lisp
+(require 'eglot)
+(add-to-list 'eglot-server-programs '((c-mode c++-mode) . ("clangd" "-j=4" "--log=error" "--background-index" "--clang-tidy" "--cross-file-rename" "--completion-style=detailed" "--pch-storage=memory" "--header-insertion=never" "--header-insertion-decorators=0")))
+(add-hook 'c-mode-hook 'eglot-ensure)
+(add-hook 'c++-mode-hook 'eglot-ensure)
+#+end_src
+

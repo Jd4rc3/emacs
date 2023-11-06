@@ -139,15 +139,15 @@
   :init (global-flycheck-mode))
 
 (set-face-attribute 'default nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 110
   :weight 'medium)
 (set-face-attribute 'variable-pitch nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 120
   :weight 'medium)
 (set-face-attribute 'fixed-pitch nil
-  :font "JetBrainsMonoNL Nerd Font"
+  :font "JetBrainsMono Nerd Font"
   :height 110
   :weight 'medium)
 ;; Makes commented text and keywords italics.
@@ -553,42 +553,37 @@
   ;; eshell-syntax-highlighting -- adds fish/zsh-like syntax highlighting.
   ;; eshell-rc-script -- your profile for eshell; like a bashrc for eshell.
   ;; eshell-aliases-file -- sets an aliases file for the eshell.
+  ;; PROMPT
+  (defun with-face (str &rest face-plist)
+      (propertize str 'face face-plist))
+    
+    (defun shk-eshell-prompt ()
+      (let ((header-bg "#11111b"))
+        (concat
+         (with-face (concat (eshell/pwd) " ") :background header-bg)
+         (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#cdd6f4")
+         (with-face
+          (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
+          :background header-bg)
+         (with-face "\n" :background header-bg)
+         (with-face user-login-name :foreground "#74c7ec")
+         "@"
+         (with-face "localhost" :foreground "#b4befe")
+         (if (= (user-uid) 0)
+             (with-face " #" :foreground "#f38ba8")
+           " $")
+         " ")))
+    (setq eshell-prompt-function 'shk-eshell-prompt)
+    (setq eshell-highlight-prompt nil)
+  ;;
 
-  (setq eshell-rc-script (concat user-emacs-directory "eshell/profile")
-        eshell-aliases-file (concat user-emacs-directory "eshell/aliases")
+  (setq eshell-rc-script "~/.emacs.d/eshell/profile.el"
         eshell-history-size 5000
         eshell-buffer-maximum-lines 5000
         eshell-hist-ignoredups t
         eshell-scroll-to-bottom-on-input t
         eshell-destroy-buffer-when-process-dies t
-        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh"))
-
-(use-package vterm
-:config
-(setq shell-file-name "/bin/sh"
-      vterm-max-scrollback 5000))
-
-(use-package vterm-toggle
-  :after vterm
-  :config
-  ;; When running programs in Vterm and in 'normal' mode, make sure that ESC
-  ;; kills the program as it would in most standard terminal programs.
-  (evil-define-key 'normal vterm-mode-map (kbd "<escape>") 'vterm--self-insert)
-  (setq vterm-toggle-fullscreen-p nil)
-  (setq vterm-toggle-scope 'project)
-  (add-to-list 'display-buffer-alist
-               '((lambda (buffer-or-name _)
-                     (let ((buffer (get-buffer buffer-or-name)))
-                       (with-current-buffer buffer
-                         (or (equal major-mode 'vterm-mode)
-                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-                  (display-buffer-reuse-window display-buffer-at-bottom)
-                  ;;(display-buffer-reuse-window display-buffer-in-direction)
-                  ;;display-buffer-in-direction/direction/dedicated is added in emacs27
-                  ;;(direction . bottom)
-                  ;;(dedicated . t) ;dedicated is supported in emacs27
-                  (reusable-frames . visible)
-                  (window-height . 0.4))))
+        eshell-visual-commands'("bash" "fish" "htop" "ssh" "top" "zsh" "pwsh"))
 
 (use-package sudo-edit)
 
@@ -705,6 +700,24 @@
 (use-package yasnippet :config (yas-global-mode))
 (use-package yasnippet-snippets :ensure t)
 
+(use-package dap-mode
+  :ensure t
+  :after (lsp-mode)
+  :functions dap-hydra/nil
+  :config
+  (require 'dap-java)
+  (require 'dap-lldb)
+  (setq dap-print-io t)
+  (setq dap-lldb-debug-program '("C:\\Program Files\\LLVM\\bin\\lldb-vscode.exe"))
+  (add-hook 'c-mode-hook #'dap-mode)
+  (add-hook 'c++-mode-hook #'dap-mode)
+  :bind (:map lsp-mode-map
+         ("<f5>" . dap-debug)
+         ("M-<f5>" . dap-hydra))
+  :hook ((dap-mode . dap-ui-mode)
+    (dap-session-created . (lambda (&_rest) (dap-hydra)))
+    (dap-terminated . (lambda (&_rest) (dap-hydra/nil)))))
+
 (use-package lsp-treemacs
   :after (lsp-mode treemacs)
   :ensure t
@@ -773,3 +786,8 @@
     (ansi-color-apply-on-region compilation-filter-start (point-max))))
 
 (add-hook 'compilation-filter-hook 'my-colorize-compilation-buffer)
+
+(require 'eglot)
+(add-to-list 'eglot-server-programs '((c-mode c++-mode) . ("clangd" "-j=4" "--log=error" "--background-index" "--clang-tidy" "--cross-file-rename" "--completion-style=detailed" "--pch-storage=memory" "--header-insertion=never" "--header-insertion-decorators=0")))
+(add-hook 'c-mode-hook 'eglot-ensure)
+(add-hook 'c++-mode-hook 'eglot-ensure)
