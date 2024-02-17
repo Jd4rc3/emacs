@@ -1,8 +1,11 @@
 # Aliases for emacs commands
-#alias ff find-file $1
+alias ff find-file $1
+
+# Windows
+alias wl-copy clip
 
 # Aliasing standard shell commands to better emacs alternatives
-#alias less view-file $1
+alias less view-file $1
 
 # Changing "ls" to "exa"
 #alias ls exa -al --color=always --group-directories-first $*  # my preferred listing
